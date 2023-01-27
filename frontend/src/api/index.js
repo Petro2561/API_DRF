@@ -23,8 +23,8 @@ class Api {
           a.href = url;
           a.download = "shopping-list";
           document.body.appendChild(a); // we need to append the element to the dom -> otherwise it will not work in firefox
-          a.click();    
-          a.remove();  //afterwards we remove the element again 
+          a.click();
+          a.remove();  //afterwards we remove the element again
         })
       }
       reject()
@@ -265,7 +265,7 @@ class Api {
   // subscriptions
 
   getSubscriptions ({
-    page, 
+    page,
     limit = 6,
     recipes_limit = 3
   }) {
