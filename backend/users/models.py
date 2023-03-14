@@ -27,7 +27,7 @@ class CustomUser(AbstractUser):
         blank=True
     )
     username = models.CharField(
-        "Имя пользователя",
+        verbose_name="Имя пользователя",
         max_length=150,
         unique=True,
         help_text=(
