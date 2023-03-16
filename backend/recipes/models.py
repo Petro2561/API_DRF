@@ -52,7 +52,7 @@ class Tag(models.Model):
 class Recipe(models.Model):
     tags = models.ManyToManyField(
         Tag,
-        related_name='reciepes',
+        related_name='recipes',
         verbose_name='Тег'
     )
     author = models.ForeignKey(
@@ -66,18 +66,6 @@ class Recipe(models.Model):
         related_name='recipes',
         verbose_name='Ингридиенты',
         through='AmountIngredient'
-    )
-    favorite = models.ManyToManyField(
-        User,
-        related_name='favorites',
-        verbose_name='Понравившиеся рецепты',
-        blank=True
-    )
-    shopping_cart = models.ManyToManyField(
-        User,
-        related_name='carts',
-        verbose_name='Список покупок',
-        blank=True
     )
     name = models.CharField(
         max_length=200,
@@ -107,6 +95,47 @@ class Recipe(models.Model):
     def __str__(self):
         return self.name
 
+
+class Favorite(models.Model):
+    user = models.ForeignKey(
+        User,
+        verbose_name='Пользователь',
+        on_delete=models.CASCADE,
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        verbose_name='Рецепт',
+        on_delete=models.CASCADE,
+        related_name='favorites'
+    )
+
+    class Meta:
+        verbose_name = 'Избраный рецепт'
+        verbose_name_plural = 'Избраные рецепты'
+
+    def __str__(self):
+        return f'{self.user} добавил в избранное {self.recipe}'
+
+
+class ShoppingCart(models.Model):
+    user = models.ForeignKey(
+        User,
+        verbose_name='Пользователь',
+        on_delete=models.CASCADE,
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        verbose_name='Рецепт',
+        on_delete=models.CASCADE,
+        related_name='cart'
+    )
+
+    class Meta:
+        verbose_name = 'Рецепт в корзине'
+        verbose_name_plural = 'Рецепты в корзине'
+
+    def __str__(self):
+        return f'{self.user} добавил в корзину {self.recipe}'
 
 class AmountIngredient(models.Model):
     recipe = models.ForeignKey(

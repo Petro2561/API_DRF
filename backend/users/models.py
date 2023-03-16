@@ -19,13 +19,6 @@ class CustomUser(AbstractUser):
         max_length=150,
         verbose_name='Фамилия'
     )
-    subscribers = models.ManyToManyField(
-        'self',
-        symmetrical=False,
-        verbose_name='Подписчики',
-        related_name='subscribed',
-        blank=True
-    )
     username = models.CharField(
         verbose_name="Имя пользователя",
         max_length=150,
@@ -45,3 +38,27 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class Subscribe(models.Model):
+    follower = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='subscriber',
+        verbose_name='Подписчик'
+    )
+    following = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='subscribing',
+        verbose_name='Автор'
+    )
+
+    class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+
+    def __str__(self):
+        return f'{self.follower} подписался на {self.following}'
+
+

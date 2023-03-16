@@ -8,7 +8,8 @@ from rest_framework.serializers import (ModelSerializer, SerializerMethodField,
                                         ValidationError)
 from rest_framework.validators import UniqueTogetherValidator
 
-from recipes.models import AmountIngredient, Ingredient, Recipe, Tag
+from recipes.models import AmountIngredient, Ingredient, Recipe, Tag, Favorite, ShoppingCart
+from users.models import Subscribe
 
 User = get_user_model()
 
@@ -176,21 +177,18 @@ class UserRecipeSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time')
 
 
-class FavoriteRecipeSerializer(serializers.ModelSerializer):
+class AddDeleteMixin(serializers.ModelSerializer):
 
-    class Meta:
-        model = Recipe
-        fields = ('pk',)
-
-    def validate(self, data):
+    def favorite_cart_validator(self, data, model):
         request = self.context.get('request')
-        pk = data.get('pk')
-        obj = get_object_or_404(Recipe, id=pk)
+        obj = data.get('recipe')
         user = self.context.get('request').user
-        favorite_exist = Recipe.objects.filter(favorite=user).exists()
+        if obj.author == user:
+            raise ValidationError('Нельзя добавить свой рецепт')
+        favorite_exist = model.objects.filter(
+            recipe=obj.id,
+            user=user).exists()
         if request.method == 'POST':
-            if obj.author == user:
-                raise ValidationError('Нельзя добавить свой рецепт')
             if favorite_exist:
                 raise ValidationError('Вы уже добавили этот рецепт')
         if request.method == 'DELETE':
@@ -198,42 +196,25 @@ class FavoriteRecipeSerializer(serializers.ModelSerializer):
                 raise ValidationError('Вы еще не добавили этот рецепт')
         return data
 
-    def to_representation(self, instance):
-        request = self.context.get('request')
-        context = {'request': request}
-        return UserRecipeSerializer(
-            instance,
-            context=context).data
 
-
-class CartRecipeSerializer(serializers.ModelSerializer):
+class FavoriteRecipeSerializer(AddDeleteMixin):
 
     class Meta:
-        model = Recipe
+        model = Favorite
         fields = "__all__"
 
     def validate(self, data):
-        request = self.context.get('request')
-        pk = data.get('recipe')
-        obj = get_object_or_404(Recipe, id=pk)
-        user = self.context.get('request').user
-        carts_exist = User.objects.filter(shopping_cart=user).exists()
-        if request.method == 'POST':
-            if obj.author == user:
-                raise ValidationError('Нельзя добавить свой рецепт')
-            if carts_exist:
-                raise ValidationError('Вы уже добавили этот рецепт')
-        if request.method == 'DELETE':
-            if not carts_exist:
-                raise ValidationError('Вы еще не добавили этот рецепт')
-        return data
+        return self.favorite_cart_validator(data, Favorite)
 
-    def to_representation(self, instance):
-        request = self.context.get('request')
-        context = {'request': request}
-        return UserRecipeSerializer(
-            instance,
-            context=context).data
+
+class CartRecipeSerializer(AddDeleteMixin):
+
+    class Meta:
+        model = ShoppingCart
+        fields = "__all__"
+
+    def validate(self, data):
+        return self.favorite_cart_validator(data, ShoppingCart)
 
 
 class UserSubscribtionsSerializer(UserSerializer):
@@ -244,23 +225,6 @@ class UserSubscribtionsSerializer(UserSerializer):
         model = User
         fields = ('email', 'id', 'username', 'first_name',
                   'last_name', 'is_subscribed', 'recipes', 'recipes_count')
-
-    def validate(self, data):
-        request = self.context.get('request')
-        if data.get('user') == data.get('subscribers'):
-            raise serializers.ValidationError(
-                'Нельзя подписываться на самого себя.'
-            )
-        subscription_exist = User.objects.filter(**data).exists()
-        if request.method == 'DELETE':
-            if not subscription_exist:
-                msg = 'Вы не подписаны на этого пользователя'
-                raise serializers.ValidationError(msg)
-        if request.method == 'POST':
-            if subscription_exist:
-                msg = 'Вы уже подписаны на этого пользователя'
-                raise serializers.ValidationError(msg)
-        return data
 
     def get_recipes(self, obj):
         recipes_limit = self.context.get(
@@ -282,3 +246,31 @@ class UserSubscribtionsSerializer(UserSerializer):
 
     def get_recipes_count(self, obj):
         return obj.recipes.count()
+
+
+class SubscribeAddDeleteSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Subscribe
+        fields = "__all__"
+
+    def validate(self, data):
+        request = self.context.get('request')
+        user = request.user
+        pk = data.get('following')
+        obj = get_object_or_404(User, id=pk.id)
+        if data.get('follower') == data.get('following'):
+            raise serializers.ValidationError(
+                'Нельзя подписываться на самого себя.'
+            )
+        subscription_exist = Subscribe.objects.filter(
+            follower=user, following=obj).exists()
+        if request.method == 'DELETE':
+            if not subscription_exist:
+                msg = 'Вы не подписаны на этого пользователя'
+                raise serializers.ValidationError(msg)
+        if request.method == 'POST':
+            if subscription_exist:
+                msg = 'Вы уже подписаны на этого пользователя'
+                raise serializers.ValidationError(msg)
+        return data

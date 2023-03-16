@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CustomUser
+from .models import CustomUser, Subscribe
 
 
 @admin.register(CustomUser)
@@ -12,3 +12,5 @@ class AdminCustomUser(admin.ModelAdmin):
     )
     search_fields = ('username', 'email',)
 # подписками можно управлять внутри пользователя
+
+admin.site.register(Subscribe)
