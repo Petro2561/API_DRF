@@ -8,7 +8,8 @@ from rest_framework.serializers import (ModelSerializer, SerializerMethodField,
                                         ValidationError)
 from rest_framework.validators import UniqueTogetherValidator
 
-from recipes.models import AmountIngredient, Ingredient, Recipe, Tag, Favorite, ShoppingCart
+from recipes.models import (AmountIngredient, Favorite, Ingredient, Recipe,
+                            ShoppingCart, Tag)
 from users.models import Subscribe
 
 User = get_user_model()

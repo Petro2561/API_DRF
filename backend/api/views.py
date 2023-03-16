@@ -13,15 +13,17 @@ from rest_framework.status import (HTTP_201_CREATED, HTTP_204_NO_CONTENT,
                                    HTTP_400_BAD_REQUEST)
 
 from api.filters import RecipeFilter
-from recipes.models import AmountIngredient, Ingredient, Recipe, Tag, Favorite, ShoppingCart
+from recipes.models import (AmountIngredient, Favorite, Ingredient, Recipe,
+                            ShoppingCart, Tag)
 from users.models import Subscribe
 
 from .paginators import RecipePagination
 from .permissions import AuthorOrReadOnly
-from .serializers import (FavoriteRecipeSerializer, CartRecipeSerializer, IngredientSerializer,
-                          RecipeSerializer, TagSerializer,
+from .serializers import (CartRecipeSerializer, FavoriteRecipeSerializer,
+                          IngredientSerializer, RecipeSerializer,
+                          SubscribeAddDeleteSerializer, TagSerializer,
                           UserCreateSerializer, UserRecipeSerializer,
-                          UserSerializer, UserSubscribtionsSerializer, SubscribeAddDeleteSerializer)
+                          UserSerializer, UserSubscribtionsSerializer)
 
 User = get_user_model()
 
