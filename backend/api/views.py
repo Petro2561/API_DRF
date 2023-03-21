@@ -7,7 +7,7 @@ from djoser.serializers import SetPasswordSerializer
 from djoser.views import UserViewSet as DjoserUserViewSet
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import (HTTP_201_CREATED, HTTP_204_NO_CONTENT,
                                    HTTP_400_BAD_REQUEST)
@@ -28,12 +28,12 @@ from .serializers import (CartRecipeSerializer, FavoriteRecipeSerializer,
 User = get_user_model()
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(DjoserUserViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     pagination_class = RecipePagination
     http_method_names = ['get', 'post', 'delete']
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (DjangoModelPermissions,)
 
     def get_queryset(self):
         user = self.request.user
@@ -46,11 +46,11 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'create':
             return UserCreateSerializer
-        elif self.action == 'set_password':
+        if self.action == 'set_password':
             return SetPasswordSerializer
-        elif self.action == 'subscriptions':
+        if self.action == 'subscriptions':
             return UserSubscribtionsSerializer
-        elif self.action == 'subscribe':
+        if self.action == 'subscribe':
             return SubscribeAddDeleteSerializer
         return UserSerializer
 
@@ -75,21 +75,24 @@ class UserViewSet(viewsets.ModelViewSet):
         if page is not None:
             serializer = self.get_serializer(page, many=True, context=context)
             return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(subscribes, many=True, context=context)
+        serializer = self.get_serializer(subscribes,
+                                         many=True, context=context)
         return Response(serializer.data)
 
-    @action(methods=['post'], detail=True)
+    @action(methods=['post'],
+            detail=True,
+            permission_classes=(IsAuthenticated,)
+            )
     def subscribe(self, request, pk=None):
         user = self.request.user
         context = {'request': request}
-        obj = get_object_or_404(User, id=pk)
         data = {
             'follower': user.id,
             'following': pk,
         }
         serializer = self.get_serializer(data=data, context=context)
         serializer.is_valid(raise_exception=True)
-        Subscribe.objects.get_or_create(follower=user, following=obj)
+        serializer.save()
         queryset = self.get_queryset().get(id=pk)
         instance_serializer = UserSubscribtionsSerializer(
             queryset, context=context)
@@ -106,7 +109,7 @@ class UserViewSet(viewsets.ModelViewSet):
         }
         serializer = SubscribeAddDeleteSerializer(data=data, context=context)
         serializer.is_valid(raise_exception=True)
-        instance = Subscribe.objects.get(follower=user, following=obj)
+        instance = Subscribe.objects.filter(follower=user, following=obj)
         instance.delete()
         return Response(HTTP_204_NO_CONTENT)
 
@@ -155,7 +158,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return CartRecipeSerializer
         return RecipeSerializer
 
-    def cart_favorite_add(self, request, model, pk):
+    def cart_favorite_add_delete(self, request, model, pk):
         user = self.request.user
         obj = get_object_or_404(Recipe, id=pk)
         serializer = self.get_serializer(
@@ -174,11 +177,11 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post', 'delete'])
     def favorite(self, request, pk=None):
-        return self.cart_favorite_add(request, Favorite, pk)
+        return self.cart_favorite_add_delete(request, Favorite, pk)
 
     @action(methods=['post', 'delete'], detail=True)
     def shopping_cart(self, request, pk=None):
-        return self.cart_favorite_add(request, ShoppingCart, pk)
+        return self.cart_favorite_add_delete(request, ShoppingCart, pk)
 
     @action(methods=['get'], detail=False)
     def download_shopping_cart(self, request):
@@ -198,7 +201,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
         for ing in ingredients:
             shopping_list += (
-                f'{ing["ingridient"].capitalize()}'
+                f'{ing["ingredient"].capitalize()}'
                 f'({ing["measure"]}): - {ing["amount"]} \n'
             )
         response = HttpResponse(

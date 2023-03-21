@@ -1,11 +1,12 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.shortcuts import get_object_or_404
-from djoser.serializers import \
+from djoser.serializers import (
     UserCreateSerializer as DjoserUserCreateSerializer
+)
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
-from rest_framework.serializers import (ModelSerializer, SerializerMethodField,
-                                        ValidationError)
+from rest_framework.serializers import ValidationError
 from rest_framework.validators import UniqueTogetherValidator
 
 from recipes.models import (AmountIngredient, Favorite, Ingredient, Recipe,
@@ -26,7 +27,7 @@ class TagSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tag
-        fields = "__all__"
+        fields = '__all__'
 
 
 class AmountIngredientSerializer(serializers.ModelSerializer):
@@ -101,20 +102,26 @@ class RecipeSerializer(serializers.ModelSerializer):
             )
         return data
 
+    @transaction.atomic()
     def create(self, validated_data):
         ingredients = validated_data.pop('ingredients')
         tags = validated_data.pop('ingredients')
         image = validated_data.pop('image')
         recipe = Recipe.objects.create(image=image, **validated_data)
-        for ingredient in ingredients:
-            AmountIngredient.objects.get_or_create(
-                recipe=recipe,
-                ingredients=ingredient['ingredient'],
-                amount=ingredient['amount']
+        create_ingredients = [AmountIngredient(
+            recipe=recipe,
+            ingredients=ingredient['ingredient'],
+            amount=ingredient['amount']
             )
+            for ingredient in ingredients
+        ]
+        AmountIngredient.objects.bulk_create(
+            create_ingredients
+        )
         recipe.tags.set(tags)
         return recipe
 
+    @transaction.atomic()
     def update(self, recipe, validated_data):
         tags = validated_data.get('tags')
         ingredients = validated_data.get('ingredients')
@@ -134,12 +141,16 @@ class RecipeSerializer(serializers.ModelSerializer):
 
         if ingredients:
             recipe.ingredients.clear()
-            for ingredient in ingredients:
-                AmountIngredient.objects.get_or_create(
-                    recipe=recipe,
-                    ingredients=ingredient['ingredient'],
-                    amount=ingredient['amount']
+            create_ingredients = [AmountIngredient(
+                recipe=recipe,
+                ingredients=ingredient['ingredient'],
+                amount=ingredient['amount']
                 )
+                for ingredient in ingredients
+            ]
+            AmountIngredient.objects.bulk_create(
+                create_ingredients
+            )
         recipe.save()
         return recipe
 
@@ -202,7 +213,7 @@ class FavoriteRecipeSerializer(AddDeleteMixin):
 
     class Meta:
         model = Favorite
-        fields = "__all__"
+        fields = '__all__'
 
     def validate(self, data):
         return self.favorite_cart_validator(data, Favorite)
@@ -212,7 +223,7 @@ class CartRecipeSerializer(AddDeleteMixin):
 
     class Meta:
         model = ShoppingCart
-        fields = "__all__"
+        fields = '__all__'
 
     def validate(self, data):
         return self.favorite_cart_validator(data, ShoppingCart)
@@ -253,7 +264,7 @@ class SubscribeAddDeleteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subscribe
-        fields = "__all__"
+        fields = '__all__'
 
     def validate(self, data):
         request = self.context.get('request')
