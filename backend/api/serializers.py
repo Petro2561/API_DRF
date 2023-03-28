@@ -42,34 +42,78 @@ class AmountIngredientSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    is_subscribed = serializers.BooleanField(read_only=True)
+    # is_subscribed = serializers.BooleanField(read_only=True)
+    is_subscribed = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
-        fields = ('email', 'id', 'username', 'first_name',
+        fields = ('username', 'email', 'id', 'first_name',
                   'last_name', 'is_subscribed')
+
+    def get_is_subscribed(self, obj):
+        user = self.context.get('request').user
+        if user.is_anonymous:
+            return False
+        return Subscribe.objects.filter(follower=user, following=obj).exists()
 
 
 class RecipeSerializer(serializers.ModelSerializer):
     is_favorited = serializers.BooleanField(read_only=True)
     is_in_shopping_cart = serializers.BooleanField(read_only=True)
-    tags = TagSerializer(many=True)
+    tags = TagSerializer(many=True, read_only=True)
     ingredients = AmountIngredientSerializer(many=True)
-    author = UserSerializer()
-    image = Base64ImageField()
+    author = UserSerializer(read_only=True)
+    image = serializers.SerializerMethodField(
+        method_name='get_image_url',
+    )
 
     class Meta:
         model = Recipe
         fields = ('id', 'tags', 'author', 'ingredients', 'is_favorited',
                   'is_in_shopping_cart', 'name', 'image', 'text',
                   'cooking_time')
-        validators = [
-            UniqueTogetherValidator(
-                queryset=Recipe.objects.all(),
-                fields=['is_favorited', 'author'],
-                message=('Нельзя подписаться на свой рецепт')
-            )
-        ]
+        read_only_fields = (
+            'is_favorite',
+            'is_shopping_cart',
+        )
+
+    def get_image_url(self, obj):
+        return obj.image.url
+
+
+class IngredientsAmountSerializer(serializers.ModelSerializer):
+    id = serializers.SlugRelatedField(
+        slug_field='id',
+        queryset=Ingredient.objects.all()
+    )
+
+    class Meta:
+        fields = ('id', 'amount')
+        model = AmountIngredient
+
+
+class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
+    ingredients = IngredientsAmountSerializer(
+        many=True,
+    )
+    tags = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Tag.objects.all()
+    )
+    image = Base64ImageField()
+
+    class Meta:
+        model = Recipe
+        fields = (
+            'ingredients',
+            'tags',
+            'image',
+            'name',
+            'text',
+            'cooking_time',
+            'author'
+        )
+        read_only_fields = ('author',)
 
     def validate(self, data):
         ingredients = data.get('ingredients')
@@ -102,57 +146,51 @@ class RecipeSerializer(serializers.ModelSerializer):
             )
         return data
 
-    @transaction.atomic()
+    # @transaction.atomic()
+    # def create(self, validated_data):
+    #     ingredients = validated_data.pop('ingredients')
+    #     tags = validated_data.pop('tags')
+    #     image = validated_data.pop('image')
+    #     recipe = Recipe.objects.create(image=image, **validated_data)
+    #     create_ingredients = [AmountIngredient(
+    #         recipe=recipe,
+    #         ingredient=ingredient['id'],
+    #         amount=ingredient['amount']
+    #         )
+    #         for ingredient in ingredients
+    #     ]
+    #     AmountIngredient.objects.bulk_create(
+    #         create_ingredients
+    #     )
+    #     recipe.tags.set(tags)
+    #     return recipe
+
+    def add_ingredients(self, instance, ingrs_data):
+        for ingredients in ingrs_data:
+            ingridient, amount = ingredients.values()
+            through = AmountIngredient(
+                recipe=instance,
+                ingredient=ingridient,
+                amount=amount,
+            )
+            through.save()
+        return instance
+
     def create(self, validated_data):
-        ingredients = validated_data.pop('ingredients')
-        tags = validated_data.pop('ingredients')
-        image = validated_data.pop('image')
-        recipe = Recipe.objects.create(image=image, **validated_data)
-        create_ingredients = [AmountIngredient(
-            recipe=recipe,
-            ingredients=ingredient['ingredient'],
-            amount=ingredient['amount']
-            )
-            for ingredient in ingredients
-        ]
-        AmountIngredient.objects.bulk_create(
-            create_ingredients
+        ingredients_data = validated_data.pop('ingredients')
+        instance = super().create(validated_data)
+        return self.add_ingredients(instance, ingredients_data)
+
+    # @transaction.atomic()
+    def update(self, instance, validated_data):
+        ingredients_data = validated_data.pop('ingredients')
+        super().update(instance, validated_data)
+        instance.ingredients.clear()
+        self.add_ingredients(
+            instance, ingredients_data
         )
-        recipe.tags.set(tags)
-        return recipe
-
-    @transaction.atomic()
-    def update(self, recipe, validated_data):
-        tags = validated_data.get('tags')
-        ingredients = validated_data.get('ingredients')
-
-        recipe.image = validated_data.get(
-            'image', recipe.image)
-        recipe.name = validated_data.get(
-            'name', recipe.name)
-        recipe.text = validated_data.get(
-            'text', recipe.text)
-        recipe.cooking_time = validated_data.get(
-            'cooking_time', recipe.cooking_time)
-
-        if tags:
-            recipe.tags.clear()
-            recipe.tags.set(tags)
-
-        if ingredients:
-            recipe.ingredients.clear()
-            create_ingredients = [AmountIngredient(
-                recipe=recipe,
-                ingredients=ingredient['ingredient'],
-                amount=ingredient['amount']
-                )
-                for ingredient in ingredients
-            ]
-            AmountIngredient.objects.bulk_create(
-                create_ingredients
-            )
-        recipe.save()
-        return recipe
+        instance.save()
+        return instance
 
 
 class UserCreateSerializer(DjoserUserCreateSerializer):

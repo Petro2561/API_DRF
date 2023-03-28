@@ -1,9 +1,17 @@
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import FilterSet, filters
 
-from recipes.models import Recipe
+from recipes.models import Ingredient, Recipe
 
 User = get_user_model()
+
+
+class IngredientFilter(FilterSet):
+    name = filters.CharFilter(lookup_expr='startswith')
+
+    class Meta:
+        model = Ingredient
+        fields = ['name']
 
 
 class RecipeFilter(FilterSet):
@@ -15,14 +23,17 @@ class RecipeFilter(FilterSet):
 
     class Meta:
         model = Recipe
-        fields = ['tags', 'author', 'is_favorited']
+        fields = ['tags', 'author']
+        ordering = ['-id']
 
     def filter_is_favorited(self, queryset, name, value):
-        if value and not self.request.user.is_anonymous:
-            return queryset.filter(favorite=self.request.user)
+        user = self.request.user
+        if value and not user.is_anonymous:
+            return queryset.filter(favorites__user=user)
         return queryset
 
     def filter_is_in_shopping_cart(self, queryset, name, value):
-        if value and not self.request.user.is_anonymous:
-            return queryset.filter(shopping_cart=self.request.user)
+        user = self.request.user
+        if value and not user.is_anonymous:
+            return queryset.filter(cart__user=user)
         return queryset

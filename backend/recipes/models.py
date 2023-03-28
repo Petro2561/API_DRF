@@ -110,7 +110,7 @@ class Favorite(models.Model):
     )
 
     class Meta:
-        verbose_name = 'Избраный рецепт'
+        verbose_name = 'Избранный рецепт'
         verbose_name_plural = 'Избраные рецепты'
 
     def __str__(self):
@@ -136,6 +136,7 @@ class ShoppingCart(models.Model):
 
     def __str__(self):
         return f'{self.user} добавил в корзину {self.recipe}'
+
 
 class AmountIngredient(models.Model):
     recipe = models.ForeignKey(

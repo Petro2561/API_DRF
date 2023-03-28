@@ -1,17 +1,57 @@
+---
 version: '3.3'
 services:
 
   frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
+    container_name: front
+    image: petro2561/foodgram_frontend:latest
     volumes:
-      - ../frontend/:/app/result_build/
-  nginx:
-    image: nginx:1.19.3
+      - ./frontend/:/app/result_build/
+
+  db:
+    container_name: db
+    image: postgres:13.0-alpine
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./.env
     ports:
-      - "80:80"
+      - "5432:5432"
+
+  backend:
+    container_name: app
+    # image: petro2561/foodgram_backend:latest
+    build: ../backend/
+    restart: always
+    command: >
+      bash -c "python manage.py migrate &&
+      python manage.py collectstatic --noinput &&
+      gunicorn --bind 0:8000 foodgram.wsgi"
+    volumes:
+      - static_dir:/app/static/
+      - media_dir:/app/media/
+    depends_on:
+      - db
+    env_file:
+      - ./.env
+
+  nginx:
+    container_name: proxy
+    image: nginx:1.23.3-alpine
+    ports:
+      - 8000:80
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - ../frontend/build:/usr/share/nginx/html/
-      - ../docs/:/usr/share/nginx/html/api/docs/
+      - ./frontend/build:/usr/share/nginx/html/
+      - ./docs/:/usr/share/nginx/html/api/docs/
+      - static_dir:/etc/nginx/html/static/
+      - media_dir:/etc/nginx/html/media/
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  static_dir:
+  media_dir:
+  postgres_data:
