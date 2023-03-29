@@ -1,5 +1,4 @@
 from django.contrib.auth import get_user_model
-from django.db import transaction
 from django.shortcuts import get_object_or_404
 from djoser.serializers import (
     UserCreateSerializer as DjoserUserCreateSerializer
@@ -7,7 +6,6 @@ from djoser.serializers import (
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.serializers import ValidationError
-from rest_framework.validators import UniqueTogetherValidator
 
 from recipes.models import (AmountIngredient, Favorite, Ingredient, Recipe,
                             ShoppingCart, Tag)
@@ -181,14 +179,15 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         instance = super().create(validated_data)
         return self.add_ingredients(instance, ingredients_data)
 
-    # @transaction.atomic()
     def update(self, instance, validated_data):
         ingredients_data = validated_data.pop('ingredients')
+        tags = validated_data.pop('tags')
         super().update(instance, validated_data)
         instance.ingredients.clear()
         self.add_ingredients(
             instance, ingredients_data
         )
+        instance.tags.set(tags)
         instance.save()
         return instance
 

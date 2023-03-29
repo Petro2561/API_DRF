@@ -5,13 +5,13 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.serializers import SetPasswordSerializer
 from djoser.views import UserViewSet as DjoserUserViewSet
-from rest_framework import filters, viewsets
+from rest_framework import viewsets
 from rest_framework.decorators import action
-# from rest_framework.permissions import IsAuthenticated
-from .permissions import (AdminOrReadOnly, AuthorStaffOrReadOnly,
-                             DjangoModelPermissions, IsAuthenticated)
+from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
+from .permissions import AdminOrReadOnly, AuthorStaffOrReadOnly
 from rest_framework.response import Response
-from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT,
+from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
+                                   HTTP_204_NO_CONTENT,
                                    HTTP_400_BAD_REQUEST)
 
 from .filters import IngredientFilter, RecipeFilter
@@ -137,6 +137,7 @@ class TagViewSet(viewsets.ModelViewSet):
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
+    queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
@@ -177,7 +178,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         new_recipe = serializer.save(author=self.request.user)
-
         return self.create_update_repr(new_recipe, HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
