@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import IngredientViewSet, RecipeViewSet, TagViewSet, UserViewSet
 
+
 app_name = 'api'
 
 router = DefaultRouter()
@@ -16,3 +17,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('auth/', include('djoser.urls.authtoken')),
 ]
+
+

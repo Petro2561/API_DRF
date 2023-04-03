@@ -24,14 +24,13 @@ from .serializers import (CartRecipeSerializer, FavoriteRecipeSerializer,
                           IngredientSerializer, RecipeSerializer,
                           RecipeCreateUpdateSerializer,
                           SubscribeAddDeleteSerializer, TagSerializer,
-                          UserCreateSerializer, UserRecipeSerializer,
+                          UserRecipeSerializer,
                           UserSerializer, UserSubscribtionsSerializer)
 
 User = get_user_model()
 
 
 class UserViewSet(DjoserUserViewSet):
-    queryset = User.objects.all()
     serializer_class = UserSerializer
     pagination_class = PageLimitPagination
     http_method_names = ['get', 'post', 'delete']
@@ -49,8 +48,6 @@ class UserViewSet(DjoserUserViewSet):
                 is_subscribed=Value(False)))
 
     def get_serializer_class(self):
-        if self.action == 'create':
-            return UserCreateSerializer
         if self.action == 'set_password':
             return SetPasswordSerializer
         if self.action == 'subscriptions':
@@ -175,7 +172,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response(instance_serializer.data, status)
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={'request': self.request})
         serializer.is_valid(raise_exception=True)
         new_recipe = serializer.save(author=self.request.user)
         return self.create_update_repr(new_recipe, HTTP_201_CREATED)
@@ -184,7 +181,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(
-            instance, data=request.data, partial=partial)
+            instance, data=request.data, partial=partial, context={'request': self.request})
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
         return self.create_update_repr(instance, HTTP_200_OK)
