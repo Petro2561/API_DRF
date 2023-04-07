@@ -62,7 +62,7 @@ jobs:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         command: |
-          cd projects/foodgram/
+          cd foodgram/
           rm -f .env
           touch .env
           echo DEBUG=${{ secrets.DEBUG }} >> .env
