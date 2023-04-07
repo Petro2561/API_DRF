@@ -60,7 +60,7 @@ jobs:
       uses: garygrossgarten/github-action-ssh@release
       with:
         host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
+        username: ${{ secrets.USER }}
         privateKey: ${{ secrets.PRIVATE_KEY }}
         command: |
           cd foodgram/
