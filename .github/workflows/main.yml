@@ -53,7 +53,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs:
-      - copy_files_to_server
       - build_push_backend_to_DockerHub
       - build_push_frontend_to_DockerHub
     steps:
