@@ -57,11 +57,11 @@ jobs:
       - build_push_frontend_to_DockerHub
     steps:
     - name: remote ssh commands to deploy
-      uses: garygrossgarten/github-action-ssh@release
+      uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USER }}
-        privateKey: ${{ secrets.PRIVATE_KEY }}
+        key: ${{ secrets.SSH_KEY }}
         command: |
           cd foodgram/
           rm -f .env
