@@ -30,11 +30,11 @@ from .serializers import (CartRecipeSerializer, FavoriteRecipeSerializer,
 User = get_user_model()
 
 
-class UserViewSet(DjoserUserViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     pagination_class = PageLimitPagination
     http_method_names = ['get', 'post', 'delete']
-    permission_classes = (DjangoModelPermissions,)
+    # permission_classes = (DjangoModelPermissions,)
 
     def get_queryset(self):
         user = self.request.user.id

@@ -4,7 +4,7 @@
     "request": "launch",
     "stopOnEntry": false,
     "python": "${config.python.pythonPath}",
-    "program": "${workspaceRoot}/manage.py",
+    "program": "${workspaceRoot}/backend/manage.py",
     "args": [
         "runserver",
         "--no-color",
@@ -15,5 +15,18 @@
         "WaitOnNormalExit",
         "RedirectOutput",
         "DjangoDebugging"
+    ],
+    "configurations": [
+        {
+            "name": "Python: Django",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/manage.py",
+            "args": [
+                "runserver"
+            ],
+            "django": true,
+            "justMyCode": true
+        }
     ]
 }
