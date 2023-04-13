@@ -29,14 +29,10 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class AmountIngredientSerializer(serializers.ModelSerializer):
-    amount = serializers.SerializerMethodField()
 
     class Meta:
-        model = Ingredient
-        fields = ('id', 'name', 'measurument_unit', 'amount')
-
-    def get_amount(self, obj):
-        return obj.ingredient.values('amount')[0]['amount']
+        fields = ('id', 'name', 'measurement_unit', 'amount')
+        model = AmountIngredient
 
 
 class UserSerializer(serializers.ModelSerializer):
