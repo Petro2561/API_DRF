@@ -45,7 +45,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'id', 'first_name',
+        fields = ('username', 'email', 'first_name',
                   'last_name', 'is_subscribed')
 
     def get_is_subscribed(self, obj):
@@ -60,7 +60,7 @@ class RecipeSerializer(serializers.ModelSerializer):
     is_in_shopping_cart = serializers.BooleanField(read_only=True)
     tags = TagSerializer(many=True)
     ingredients = AmountIngredientSerializer(many=True)
-    # author = UserSerializer(read_only=True)
+    author = UserSerializer(read_only=True)
     image = serializers.SerializerMethodField(
         method_name='get_image_url',
     )
