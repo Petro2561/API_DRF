@@ -226,7 +226,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             recipe__cart__user=user
         ).values(
             ingridient=F('ingredient__name'),
-            measure=F('ingredient__measurument_unit'),
+            measure=F('ingredient__measurement_unit'),
         ).annotate(amount=Sum('amount'))
 
         filename = f'{user.username}_shopping_cart.txt'
