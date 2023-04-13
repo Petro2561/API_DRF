@@ -5,9 +5,10 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.serializers import SetPasswordSerializer
 from djoser.views import UserViewSet as DjoserUserViewSet
-from rest_framework import permissions, viewsets
+from rest_framework import viewsets
 from rest_framework.decorators import action
-from .permissions import IsAdminOrOwnerOrReadOnly, SubscriberOrAdmin
+from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
+from .permissions import AdminOrReadOnly, AuthorStaffOrReadOnly
 from rest_framework.response import Response
 from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
                                    HTTP_204_NO_CONTENT,
@@ -23,17 +24,18 @@ from .serializers import (CartRecipeSerializer, FavoriteRecipeSerializer,
                           IngredientSerializer, RecipeSerializer,
                           RecipeCreateUpdateSerializer,
                           SubscribeAddDeleteSerializer, TagSerializer,
-                          UserRecipeSerializer,
+                          UserCreateSerializer, UserRecipeSerializer,
                           UserSerializer, UserSubscribtionsSerializer)
 
 User = get_user_model()
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(DjoserUserViewSet):
+    queryset = User.objects.all()
     serializer_class = UserSerializer
     pagination_class = PageLimitPagination
     http_method_names = ['get', 'post', 'delete']
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (DjangoModelPermissions,)
 
     def get_queryset(self):
         user = self.request.user.id
@@ -47,6 +49,8 @@ class UserViewSet(viewsets.ModelViewSet):
                 is_subscribed=Value(False)))
 
     def get_serializer_class(self):
+        if self.action == 'create':
+            return UserCreateSerializer
         if self.action == 'set_password':
             return SetPasswordSerializer
         if self.action == 'subscriptions':
@@ -63,7 +67,8 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = UserSerializer(me, many=True, context=context)
         return Response(serializer.data)
 
-    @action(methods=['post'], detail=False)
+    @action(methods=['post'], detail=False,
+            permission_classes=[IsAuthenticated])
     def set_password(self, request, *args, **kwargs):
         return DjoserUserViewSet.set_password(self, request, *args, **kwargs)
 
@@ -82,7 +87,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(methods=['post'],
             detail=True,
-            permission_classes=(SubscriberOrAdmin, permissions.IsAuthenticatedOrReadOnly)
+            permission_classes=(IsAuthenticated,)
             )
     def subscribe(self, request, id=None):
         user = self.request.user
@@ -120,14 +125,14 @@ class IngredientViewSet(viewsets.ModelViewSet):
     serializer_class = IngredientSerializer
     filter_backends = (DjangoFilterBackend,)
     filterset_class = IngredientFilter
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    permission_classes = (AdminOrReadOnly,)
     http_method_names = ['get']
 
 
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    permission_classes = (AdminOrReadOnly,)
     http_method_names = ['get']
 
 
@@ -138,10 +143,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     filterset_class = RecipeFilter
     pagination_class = PageLimitPagination
     http_method_names = ['get', 'post', 'delete', 'patch']
-    permission_classes = (
-        IsAdminOrOwnerOrReadOnly,
-        permissions.IsAuthenticatedOrReadOnly
-    )
+    permission_classes = (AuthorStaffOrReadOnly,)
 
     def get_queryset(self):
         user = self.request.user.id
@@ -173,7 +175,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response(instance_serializer.data, status)
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data, context={'request': self.request})
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         new_recipe = serializer.save(author=self.request.user)
         return self.create_update_repr(new_recipe, HTTP_201_CREATED)
@@ -182,7 +184,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(
-            instance, data=request.data, partial=partial, context={'request': self.request})
+            instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
         return self.create_update_repr(instance, HTTP_200_OK)
@@ -204,15 +206,18 @@ class RecipeViewSet(viewsets.ModelViewSet):
         serializer = UserRecipeSerializer(obj)
         return Response(serializer.data, status=HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post', 'delete'])
+    @action(detail=True, methods=['post', 'delete'],
+            permission_classes=[IsAuthenticated])
     def favorite(self, request, pk=None):
         return self.cart_favorite_add_delete(request, Favorite, pk)
 
-    @action(detail=True, methods=['post', 'delete'])
+    @action(detail=True, methods=['post', 'delete'],
+            permission_classes=[IsAuthenticated])
     def shopping_cart(self, request, pk=None):
         return self.cart_favorite_add_delete(request, ShoppingCart, pk)
 
-    @action(methods=['get'], detail=False)
+    @action(methods=['get'], detail=False,
+            permission_classes=[IsAuthenticated])
     def download_shopping_cart(self, request):
         user = self.request.user
         if not user.shoppingcart_set.exists():
