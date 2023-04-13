@@ -5,10 +5,9 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.serializers import SetPasswordSerializer
 from djoser.views import UserViewSet as DjoserUserViewSet
-from rest_framework import viewsets
+from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import DjangoModelPermissions, IsAuthenticated
-from .permissions import AdminOrReadOnly, AuthorStaffOrReadOnly
+from .permissions import IsAdminOrOwnerOrReadOnly, SubscriberOrAdmin
 from rest_framework.response import Response
 from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
                                    HTTP_204_NO_CONTENT,
@@ -30,11 +29,11 @@ from .serializers import (CartRecipeSerializer, FavoriteRecipeSerializer,
 User = get_user_model()
 
 
-class UserViewSet(DjoserUserViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     pagination_class = PageLimitPagination
     http_method_names = ['get', 'post', 'delete']
-    permission_classes = (DjangoModelPermissions,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
         user = self.request.user.id
@@ -64,8 +63,7 @@ class UserViewSet(DjoserUserViewSet):
         serializer = UserSerializer(me, many=True, context=context)
         return Response(serializer.data)
 
-    @action(methods=['post'], detail=False,
-            permission_classes=[IsAuthenticated])
+    @action(methods=['post'], detail=False)
     def set_password(self, request, *args, **kwargs):
         return DjoserUserViewSet.set_password(self, request, *args, **kwargs)
 
@@ -84,7 +82,7 @@ class UserViewSet(DjoserUserViewSet):
 
     @action(methods=['post'],
             detail=True,
-            permission_classes=(IsAuthenticated,)
+            permission_classes=(SubscriberOrAdmin, permissions.IsAuthenticatedOrReadOnly)
             )
     def subscribe(self, request, id=None):
         user = self.request.user
@@ -122,14 +120,14 @@ class IngredientViewSet(viewsets.ModelViewSet):
     serializer_class = IngredientSerializer
     filter_backends = (DjangoFilterBackend,)
     filterset_class = IngredientFilter
-    permission_classes = (AdminOrReadOnly,)
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
     http_method_names = ['get']
 
 
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = (AdminOrReadOnly,)
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
     http_method_names = ['get']
 
 
@@ -140,7 +138,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
     filterset_class = RecipeFilter
     pagination_class = PageLimitPagination
     http_method_names = ['get', 'post', 'delete', 'patch']
-    permission_classes = (AuthorStaffOrReadOnly,)
+    permission_classes = (
+        IsAdminOrOwnerOrReadOnly,
+        permissions.IsAuthenticatedOrReadOnly
+    )
 
     def get_queryset(self):
         user = self.request.user.id
@@ -203,18 +204,15 @@ class RecipeViewSet(viewsets.ModelViewSet):
         serializer = UserRecipeSerializer(obj)
         return Response(serializer.data, status=HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post', 'delete'],
-            permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['post', 'delete'])
     def favorite(self, request, pk=None):
         return self.cart_favorite_add_delete(request, Favorite, pk)
 
-    @action(detail=True, methods=['post', 'delete'],
-            permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['post', 'delete'])
     def shopping_cart(self, request, pk=None):
         return self.cart_favorite_add_delete(request, ShoppingCart, pk)
 
-    @action(methods=['get'], detail=False,
-            permission_classes=[IsAuthenticated])
+    @action(methods=['get'], detail=False)
     def download_shopping_cart(self, request):
         user = self.request.user
         if not user.shoppingcart_set.exists():
