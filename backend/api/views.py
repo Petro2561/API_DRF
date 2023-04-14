@@ -65,7 +65,7 @@ class UserViewSet(DjoserUserViewSet):
         me = User.objects.filter(id=user.id)
         context = {'request': request}
         serializer = UserSerializer(me, many=True, context=context)
-        return Response(serializer.data)
+        return Response(serializer.data[0])
 
     @action(methods=['post'], detail=False,
             permission_classes=[IsAuthenticated])
