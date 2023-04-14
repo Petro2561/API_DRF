@@ -1,4 +1,5 @@
 # praktikum_new_diplom
+![main_workflow](https://github.com/Petro2561/foodgram-project-react/actions/workflows/main.yml/badge.svg)
 http://51.250.75.102/
 login: admin
 passwird: pete3015
