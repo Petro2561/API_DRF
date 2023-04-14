@@ -24,10 +24,13 @@ sh get-docker.sh                                        # запуск скри�
 sudo apt-get install docker-compose-plugin              # последняя версия docker compose
 ```
 Скопировать на сервер файлы docker-compose.yml, nginx.conf из папки infra (команды выполнять находясь в папке infra):
+```
 scp docker-compose.yml nginx.conf username@IP:/home/username/   # username - имя пользователя на сервере
                                                                 # IP - публичный IP сервера
+```
 
 Создать и запустить контейнеры Docker, выполнить команду на сервере (версии команд "docker compose" или "docker-compose" отличаются в зависимости от установленной версии Docker Compose):
+```
 sudo docker compose up -d
 После успешной сборки выполнить миграции:
 sudo docker compose exec backend python manage.py migrate
@@ -37,6 +40,7 @@ sudo docker compose exec backend python manage.py createsuperuser
 sudo docker compose exec backend python manage.py collectstatic --noinput
 Наполнить базу данных содержимым из файла ingredients.json:
 sudo docker compose exec backend python manage.py loaddata ingredients.json
+```
 
 Автор backend'а:
 Петр Анреев (c) 2022
