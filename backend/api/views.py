@@ -59,14 +59,6 @@ class UserViewSet(DjoserUserViewSet):
             return SubscribeAddDeleteSerializer
         return UserSerializer
 
-    @action(detail=False)
-    def me(self, request):
-        user = self.request.user
-        me = User.objects.filter(id=user.id)
-        context = {'request': request}
-        serializer = UserSerializer(me, many=True, context=context)
-        return Response(serializer.data[0])
-
     @action(methods=['post'], detail=False,
             permission_classes=[IsAuthenticated])
     def set_password(self, request, *args, **kwargs):
