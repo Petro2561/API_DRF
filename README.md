@@ -32,15 +32,23 @@ scp docker-compose.yml nginx.conf username@IP:/home/username/   # username - и�
 Создать и запустить контейнеры Docker, выполнить команду на сервере (версии команд "docker compose" или "docker-compose" отличаются в зависимости от установленной версии Docker Compose):
 ```
 sudo docker compose up -d
+```
 После успешной сборки выполнить миграции:
+```
 sudo docker compose exec backend python manage.py migrate
+```
 Создать суперпользователя:
+```
 sudo docker compose exec backend python manage.py createsuperuser
+```
 Собрать статику:
+```
 sudo docker compose exec backend python manage.py collectstatic --noinput
+```
 Наполнить базу данных содержимым из файла ingredients.json:
+```
 sudo docker compose exec backend python manage.py loaddata ingredients.json
 ```
 
-Автор backend'а:
+## Автор backend'а:
 Петр Анреев (c) 2022
