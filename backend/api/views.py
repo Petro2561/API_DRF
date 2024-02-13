@@ -48,6 +48,7 @@ class UserViewSet(DjoserUserViewSet):
                 else User.objects.annotate(
                 is_subscribed=Value(False)))
 
+    # Лучше использовать словарь
     def get_serializer_class(self):
         if self.action == 'create':
             return UserCreateSerializer
@@ -71,11 +72,13 @@ class UserViewSet(DjoserUserViewSet):
         page = self.paginate_queryset(subscribes)
         context = {'request': request}
         if page is not None:
-            serializer = self.get_serializer(page, many=True, context=context)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(subscribes,
-                                         many=True, context=context)
-        return Response(serializer.data)
+            return self.get_paginated_response(
+                self.get_serializer(page, many=True, context=context).data
+            )
+        return Response(self.get_serializer(
+            subscribes,
+            many=True, context=context).data
+        )
 
     @action(methods=['post'],
             detail=True,
@@ -218,7 +221,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             recipe__cart__user=user
         ).values(
             ingridient=F('ingredient__name'),
-            measure=F('ingredient__measurement_unit'),
+            measure=F('ingredient__measurment_unit'),
         ).annotate(amount=Sum('amount'))
 
         filename = f'{user.username}_shopping_cart.txt'
